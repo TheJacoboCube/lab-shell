@@ -9,6 +9,7 @@
 
 char * get_input();
 void fail_with_error(const char * message);
+void display_error(const char * message);
 void execute(char ** args);
 
 int main(void)
@@ -37,9 +38,14 @@ int main(void)
     return 0; // Buh-bye.
 }
 
+void display_error(const char * message)
+{
+    printf("\e[31mError: %s\n\e[0m", message); // Uh oh. Let the user know they screwed up.
+}
+
 void fail_with_error(const char * message)
 {
-    printf("\e[31mError: %s\n:\e[0m", message); // Uh oh. Let the user know they screwed up.
+    display_error(message);
     exit(1); // g2g
 }
 
@@ -47,7 +53,7 @@ void execute(char ** args)
 {
     pid_t pid;
 
-    if((pid = fork() < 0))
+    if((pid = fork()) < 0)
     {
         fail_with_error("Could not fork new process.");
     }

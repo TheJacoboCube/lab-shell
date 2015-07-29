@@ -3,4 +3,4 @@
 echo -e "\n\e[31m-----------------------------------------------\e[0m\n";
 
 # Actually do the compilation and stick it in bin/shell.o.
-gcc -o bin/shell.o shell.c;
+gcc -g -o bin/shell.o shell.c;
