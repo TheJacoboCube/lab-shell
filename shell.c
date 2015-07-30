@@ -3,18 +3,21 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <stdio.h>
+#include <ctype.h>
+#include <sys/wait.h>
 
 #define MAX_LINE 80
 #define BUFFER_START 20
 
 char * get_input();
+void parse_args(char * input, char ** args);
 void fail_with_error(const char * message);
 void display_error(const char * message);
 void execute(char ** args);
 
 int main(void)
 {
-    char * input, * args;
+    char * input, * args[MAX_LINE];
 
     while(1) {
         printf("stephen> ");
@@ -28,11 +31,10 @@ int main(void)
             continue;
         }
 
-        args = strtok(input, " "); // Tokenize the args.
-        free(input);
+        parse_args(input, args); // Tokenize the args.
+        execute(args);
 
-        // TODO: Check for ampersand.
-        execute(&args);
+        free(input);
     }
 
     return 0; // Buh-bye.
@@ -49,9 +51,53 @@ void fail_with_error(const char * message)
     exit(1); // g2g
 }
 
+void parse_args(char * input, char ** args)
+{
+    char * inputInd = input; // Moving pointer through input.
+
+    while(*inputInd != '\0')
+    {
+        while(*inputInd == ' ' || *inputInd == '\n')
+        {
+            *inputInd++ = '\0'; // Replace all spaces with terminator.
+        }
+
+        *args++ = inputInd;
+
+        while(*inputInd != ' ' && *inputInd != '\n' && *inputInd != '\0')
+        {
+            inputInd++;
+        }
+    }
+
+    *args = '\0';
+}
+
 void execute(char ** args)
 {
     pid_t pid;
+    int background = 0;
+
+    char ** argsInd = args;
+    while(*argsInd != '\0')
+    {
+        if(background)
+        {
+            background = 0;
+        }
+
+        if(strcmp(*argsInd, "&") == 0)
+        {
+            background = 1;
+        }
+
+        argsInd++;
+    }
+
+    if(background)
+    {
+        *(argsInd - 1) = '\0';
+    }
 
     if((pid = fork()) < 0)
     {
@@ -61,12 +107,15 @@ void execute(char ** args)
     {
         if(execvp(*args, args) < 0) // Check execution success.
         {
-            fail_with_error("Execution failed.");
+            display_error("Execution failed.");
         }
     }
-    else
+    else if(!background)
     {
-        fail_with_error("Something went wrong.");
+        if(wait(NULL) == -1)
+        {
+            display_error("Process did not return on wait.");
+        }
     }
 }
 
@@ -75,7 +124,7 @@ char * get_input()
     unsigned int bufferSize = BUFFER_START, bufferUsed = 0; // Buffer tracking.
     char * buffer = calloc(bufferSize, sizeof(char)); // Hi, could I get a 00000000000000000000?
 
-    while (1) {
+    while(1) {
         char currentChar = getchar(); // Dear user, Please press a button. Kthxbye.
 
         if(currentChar == '\n') // User be done.
@@ -83,7 +132,7 @@ char * get_input()
 
         buffer[bufferUsed] = currentChar;
 
-        if (bufferUsed == bufferSize - 1) { // A little big there, champ?
+        if(bufferUsed == bufferSize - 1) { // A little big there, champ?
             bufferSize *= 2; // Double the size.
             // Bigger buffer, please! :D
             buffer = (char *) realloc(buffer, bufferSize);
